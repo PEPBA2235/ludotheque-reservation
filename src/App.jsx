@@ -24,20 +24,21 @@ async function supabaseFetch(path, options = {}) {
 }
 
 async function getReservations() {
-  return supabaseFetch("reservations?select=*&order=created.desc");
+  return supabaseFetch("reservations?select=id,jeu,date_retrait,date_retour,created&order=created.desc");
 }
 
 async function insertReservation(data) {
-  return supabaseFetch("reservations", {
+   return supabaseFetch("reservations", {
     method: "POST",
     body: JSON.stringify(data),
+    prefer: "return=minimal",
   });
 }
 
-async function deleteReservation(code) {
-  return supabaseFetch("reservations?code=eq." + code, {
-    method: "DELETE",
-    prefer: "return=minimal",
+async function annulerReservation(code) {
+  return supabaseFetch("rpc/annuler_reservation", {
+    method: "POST",
+    body: JSON.stringify({ p_code: code }),
   });
 }
 // ================================================================
@@ -256,13 +257,12 @@ const filteredRes = filterJeu ? activeReservations.filter(r => r.jeu === filterJ
     setSaving(true);
     try {
       // Vérifier que la réservation existe
-      const exists = reservations.find(r => r.code && r.code.toUpperCase() === code);
-      if (!exists) {
+      const ok = await annulerReservation(code);
+      if (!ok) {
         setCancelMsg("error");
         setSaving(false);
         return;
       }
-      await deleteReservation(code);
       await refreshReservations();
       setCancelMsg("ok");
       setCancelCode("");
